@@ -36,6 +36,9 @@ this.recline.View = this.recline.View || {};
       // Property to hold Geographic bounds (if given).
       this.bounds = options.bounds ? options.bounds : null;
 
+      // Property to set how to handle multiple row instances.
+      this.avg = typeof options.avg !== undefined ? options.avg : true;
+
       // Breakpoints and color scale.
       this.breakpoints = options.breakpoints ? options.breakpoints : [];
       this.breakpoints = this.breakpoints.length > 0 ? this._validateBreakpoints(this.breakpoints) : [];
@@ -397,7 +400,9 @@ this.recline.View = this.recline.View || {};
                 n++;
               }
             });
+
             if (n) {
+              n = self.avg ? n : 1;
               d = sum/n;
             }
 
@@ -524,6 +529,7 @@ this.recline.View = this.recline.View || {};
         v += self._preparePercentage(value[field_index]);
       });
       if (n > 0) {
+        n = self.avg ? n : 1;
         v = parseInt(v / n, 10);
       }
 
