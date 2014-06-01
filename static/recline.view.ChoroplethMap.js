@@ -31,10 +31,15 @@ this.recline.View = this.recline.View || {};
 
       // Property to hold Geo Data.
       this.polygons = options.polygons;
+      console.log(this.polygons);
       this.polygons_layer = null;
 
+      this._calculateBoundsFromPolygons();
       // Property to hold Geographic bounds (if given).
-      this.bounds = options.bounds ? options.bounds : null;
+      this.bounds = options.bounds ? options.bounds : this.bounds;
+
+      // Property to hold Units of Measure
+      this.unit_of_measure = options.unit_of_measure ? options.unit_of_measure : '';
 
       // Property to set how to handle multiple row instances.
       this.avg = typeof options.avg !== undefined ? options.avg : true;
@@ -317,19 +322,39 @@ this.recline.View = this.recline.View || {};
       $('.menu-right').show();
     },
     /**
+     * Calculates bounds from polygons
+     */
+    _calculateBoundsFromPolygons: function() {
+      var layers = new L.GeoJSON(this.polygons);
+      layers = layers._layers;
+      var bounds = new L.LatLngBounds();
+      for (var layer in layers) {
+        if (layers.hasOwnProperty(layer)){
+          var feature = layers[layer].feature;
+          for ( var j = 1; j < feature.geometry.coordinates[0].length; j++ ) {
+            var latlng = feature.geometry.coordinates[0][j];
+            latlng = new L.LatLng(latlng[1],latlng[0]);
+            bounds.extend(latlng);
+          }
+        }
+      }
+      this.bounds = bounds;
+    },
+    /**
      * Zoom map to preset bounds.
      */
     _zoomToPolygons: function() {
-      if (this.bounds) {
-        this.map.fitBounds(
-          L.latLngBounds(
-            L.latLng(this.bounds.bottom, this.bounds.left),
-            L.latLng(this.bounds.top, this.bounds.right)
-          )
+      if (this.options.location_default) {
+        this.map.setView(
+          [
+            this.options.location_default.lat,
+            this.options.location_default.lon
+          ],
+          this.options.location_default.zoom
         );
       }
       else {
-        this.map.setView([this.options.location_default.lat, this.options.location_default.lon], this.options.location_default.zoom);
+        this.map.fitBounds(this.bounds);
       }
     },
     /**
@@ -381,7 +406,7 @@ this.recline.View = this.recline.View || {};
       }
 
       // Updating color references.
-      this.menu.updateColorScale(self.breakpoints, self.base_color);
+      this.menu.updateColorScale(self.breakpoints, self.base_color, self.unit_of_measure);
 
       // Overlay geometry from statesData and add shading.
       this.polygons_layer = new L.GeoJSON(
@@ -525,6 +550,9 @@ this.recline.View = this.recline.View || {};
         // We'll asume every row has the same value.
         if (!units && units_index > -1) {
           units = value[units_index];
+        }
+        else {
+          units = self.unit_of_measure;
         }
         v += self._preparePercentage(value[field_index]);
       });
@@ -939,8 +967,10 @@ this.recline.View = this.recline.View || {};
      *   an array of breakpoints for the color scale
      * @param  {array} colors
      *   an array of color to build the color scale
+     * @param  {string} unit_of_measure
+     *   a string containing units for the color scale
      */
-    updateColorScale: function(breakpoints, colors) {
+    updateColorScale: function(breakpoints, colors, unit_of_measure) {
       var color_scale = chroma.scale(colors);
       var html = '';
       var temp = '';
@@ -953,6 +983,7 @@ this.recline.View = this.recline.View || {};
       });
       temp = '<i style="background:' + color_scale(1).hex() + '"></i>';
       temp += breakpoints[breakpoints.length - 1] + '+<br />';
+      temp =  unit_of_measure + '</br>' + temp;
       this.$el.find('#color-scale').html(temp + html);
     }
   });
